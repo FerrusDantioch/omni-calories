@@ -44,6 +44,14 @@
   <!-- ====== Bandeau d'alerte en cas de dépassement (aujourd'hui uniquement) ====== -->
   <div id="bandeau-depassement" class="bandeau-depassement" role="alert" hidden></div>
 
+  <!-- ====== Nouvelle version prête : rien ne change tant qu'on n'a pas
+       touché « Mettre à jour » (voir la fin de app.js) ====== -->
+  <div id="bandeau-mise-a-jour" class="bandeau-mise-a-jour" role="status" hidden>
+    <p>Une nouvelle version d'Omni-Calories est prête. Vos données restent
+       telles quelles.</p>
+    <button type="button" id="btn-mise-a-jour" class="bouton-principal">Mettre à jour</button>
+  </div>
+
   <!-- ====== Rappel de l'objectif actuellement actif ====== -->
   <section class="carte-objectif">
     <div class="objectif-texte">

@@ -178,6 +178,25 @@ button.bouton-secondaire { background: transparent; border: 1px solid var(--bord
   text-align: center;
 }
 
+/* ---------- Bandeau "nouvelle version prête" ---------- */
+/* :not([hidden]) : sinon display: flex annulerait le masquage (voir CLAUDE.md). */
+.bandeau-mise-a-jour:not([hidden]) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  max-width: 640px;
+  width: calc(100% - 32px);
+  margin: 12px auto 0;
+  padding: 10px 14px;
+  background: var(--accent-fond);
+  border: 1px solid var(--accent);
+  border-radius: var(--rayon);
+  font-size: 0.9rem;
+}
+.bandeau-mise-a-jour p { margin: 0; flex: 1 1 200px; }
+
 /* ---------- Carte "objectif actif" ---------- */
 .carte-objectif {
   display: flex;
