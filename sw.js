@@ -4,7 +4,7 @@
    ce fichier ne met en cache que les requêtes same-origin (type 'basic'),
    donc les appels API cross-origin ne sont jamais interceptés ici. */
 
-const CACHE = 'omni-calories-v22';
+const CACHE = 'omni-calories-v23';
 
 // Fichiers mis en cache dès l'installation (l'app shell : tout ce dont
 // l'app a besoin pour démarrer hors connexion). Le moteur OCR
@@ -32,11 +32,15 @@ const FICHIERS = [
 // passer par le petit cache du navigateur (GitHub Pages le garde 10 min).
 // Sinon, deux mises à jour publiées coup sur coup pourraient ranger
 // d'anciens fichiers sous le nouveau numéro de version.
+// Volontairement, PAS de self.skipWaiting() ici : une nouvelle version
+// attend qu'on touche « Mettre à jour » dans le bandeau de l'application
+// (voir le message « activer » plus bas). Rien ne change par surprise.
+// Seule exception, fixée par le navigateur : si l'application est
+// complètement fermée, la nouvelle version est là à la prochaine ouverture.
 self.addEventListener('install', (e) => {
   e.waitUntil(
     caches.open(CACHE)
       .then((c) => c.addAll(FICHIERS.map((f) => new Request(f, { cache: 'reload' }))))
-      .then(() => self.skipWaiting())
   );
 });
 
@@ -58,24 +62,32 @@ self.addEventListener('activate', (e) => {
   );
 });
 
+// On a touché « Mettre à jour » : cette version prend le relais. La page
+// le remarque (événement « controllerchange ») et se recharge.
+self.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'activer') self.skipWaiting();
+});
+
+// Chaque fichier demandé : la copie rangée sur l'appareil d'abord ; le
+// réseau seulement pour un fichier absent (ex. le moteur OCR, au premier
+// usage), dont la copie est alors gardée.
+// On ne remplace JAMAIS en arrière-plan un fichier déjà rangé : sinon
+// l'application changerait en douce, sans passer par « Mettre à jour ».
+// On ne cherche que dans CACHE, la copie de CETTE version : pendant
+// qu'une nouvelle version attend, sa copie existe déjà à côté.
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
   // Les appels vers d'autres sites (Open Food Facts) passent directement
   // par le réseau, sans détour par ce fichier.
   if (new URL(e.request.url).origin !== self.location.origin) return;
   e.respondWith(
-    caches.match(e.request).then((enCache) => {
-      const surLeReseau = fetch(e.request)
-        .then((rep) => {
-          if (rep && rep.status === 200 && rep.type === 'basic') {
-            const copie = rep.clone();
-            caches.open(CACHE).then((c) => c.put(e.request, copie));
-          }
-          return rep;
-        })
-        .catch(() => enCache);
-      return enCache || surLeReseau;
-    })
+    caches.open(CACHE).then((c) => c.match(e.request).then((enCache) => {
+      if (enCache) return enCache;
+      return fetch(e.request).then((rep) => {
+        if (rep && rep.status === 200 && rep.type === 'basic') c.put(e.request, rep.clone());
+        return rep;
+      });
+    }))
   );
 });
 

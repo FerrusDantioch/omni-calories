@@ -2207,8 +2207,51 @@ async function demarrer() {
   await rafraichirEcran();
 
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
+    // Ce changement a aussi lieu à la toute première installation : on ne
+    // recharge que si l'on a touché « Mettre à jour ».
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (miseAJourDemandee) location.reload();
+    });
+    navigator.serviceWorker.register('./sw.js').then(surveillerMisesAJour).catch(() => {});
   }
 }
+
+// ---------- Nouvelle version de l'application ----------
+// Le service worker la télécharge en arrière-plan, puis ATTEND : rien ne
+// change par surprise. Un bandeau propose « Mettre à jour », et c'est
+// l'utilisateur qui choisit le moment.
+let inscriptionSw = null;
+let miseAJourDemandee = false;
+
+function surveillerMisesAJour(inscription) {
+  inscriptionSw = inscription;
+  // Une version attendait déjà (téléchargée lors d'une visite précédente).
+  montrerMiseAJour();
+  inscription.addEventListener('updatefound', () => {
+    const nouveau = inscription.installing;
+    if (!nouveau) return;
+    nouveau.addEventListener('statechange', () => {
+      if (nouveau.state === 'installed') montrerMiseAJour();
+    });
+  });
+  // À chaque retour dans l'application, on regarde s'il y a du nouveau.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') inscription.update().catch(() => {});
+  });
+}
+
+function montrerMiseAJour() {
+  // Sans « controller », c'est la toute première installation : rien à proposer.
+  const prete = !!(inscriptionSw && inscriptionSw.waiting && navigator.serviceWorker.controller);
+  document.getElementById('bandeau-mise-a-jour').hidden = !prete;
+}
+
+document.getElementById('btn-mise-a-jour').addEventListener('click', (e) => {
+  if (!inscriptionSw || !inscriptionSw.waiting) return;
+  miseAJourDemandee = true;
+  e.currentTarget.disabled = true;
+  e.currentTarget.textContent = 'Mise à jour…';
+  inscriptionSw.waiting.postMessage({ type: 'activer' });
+});
 
 demarrer();

@@ -95,6 +95,17 @@ ayant déjà ouvert l'application continue de voir l'ancienne version. En cas
 d'**ajout de fichier**, l'inscrire aussi dans la liste `FICHIERS` du même
 fichier.
 
+## Nouvelle version : jamais de changement par surprise
+
+Une nouvelle version **attend** un appui sur « Mettre à jour »
+(`#bandeau-mise-a-jour`, en haut du journal ; fin d'`app.js`). Ne pas
+remettre `self.skipWaiting()` dans l'installation de `sw.js` : il n'est
+appelé qu'au message `{ type: 'activer' }`. Le `fetch` ne sert que la
+copie de `CACHE` et ne remplace jamais en arrière-plan un fichier rangé
+(sinon l'application changerait en douce). Limite du navigateur : si
+l'application est complètement fermée, la nouvelle version est là à
+l'ouverture suivante.
+
 ## Format des données depuis la Phase 7 (migration automatique)
 
 - **Ligne du journal** : en plus de `caloriesCalculees` /
