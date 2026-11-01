@@ -94,10 +94,31 @@ async function nouvellePage({ avant, ...options } = {}) {
   return { ctx, p };
 }
 
-/* Fichiers cités dans le service worker (« ./qqch.ext ») : tous doivent exister. */
+/* Fichiers cités dans le service worker (« ./qqch.ext » ou « dossier/qqch.ext ») :
+   tous doivent exister. Les adresses d'autres sites ne sont pas comptées. */
 function fichiersDuServiceWorker(nomFichier) {
   const texte = fs.readFileSync(path.join(RACINE, nomFichier), 'utf8');
-  return [...new Set([...texte.matchAll(/["'](\.\/[^"'\s]+\.[a-z0-9]+)["']/gi)].map((m) => m[1]))];
+  const trouves = [...texte.matchAll(/["']((?:\.\/)?[\w\-./]+\.[a-z][a-z0-9]{1,11})["']/gi)].map((m) => m[1]);
+  return [...new Set(trouves.filter((f) => !f.includes('//') && f !== nomFichier))];
+}
+
+/* Recharger la page. Si elle était déjà en train de se recharger d'elle-même
+   (certaines applications le font une fois à la première visite), on attend
+   un peu et on réessaie une fois. */
+async function recharger(p) {
+  try { await p.reload(); } catch (e) { await p.waitForTimeout(1500); await p.reload(); }
+}
+
+/* Mesurer quelque chose dans la page. Si la page se recharge pendant la
+   mesure, on attend qu'elle soit de nouveau prête et on recommence. */
+async function mesurer(p, fn) {
+  for (let essai = 1; ; essai++) {
+    try { return await p.evaluate(fn); } catch (e) {
+      if (essai >= 3 || !/context was destroyed|navigation/i.test(e.message)) throw e;
+      await p.waitForLoadState('load');
+      await p.waitForTimeout(1000);
+    }
+  }
 }
 
 /* ---------- Ce que toute application doit savoir faire ---------- */
@@ -112,7 +133,7 @@ async function controlesCommuns({ serviceWorker, avant }) {
   await section('Ouverture sur un téléphone', async () => {
     const { ctx, p } = await nouvellePage({ avant });
     await p.waitForTimeout(1500);
-    const mesure = await p.evaluate(() => ({
+    const mesure = await mesurer(p, () => ({
       debord: document.documentElement.scrollWidth - innerWidth,
       caches: [...document.querySelectorAll('[hidden]')].filter((e) => getComputedStyle(e).display !== 'none').map((e) => e.id || e.className),
       texte: document.body.innerText.trim().length
@@ -121,19 +142,19 @@ async function controlesCommuns({ serviceWorker, avant }) {
     verifier(mesure.debord <= 0, 'aucun défilement sur le côté', mesure.debord);
     verifier(mesure.caches.length === 0, 'les éléments cachés restent cachés', mesure.caches);
 
-    const pret = await p.evaluate(() => Promise.race([
+    const pret = await mesurer(p, () => Promise.race([
       navigator.serviceWorker.ready.then(() => true),
       new Promise((ok) => setTimeout(() => ok(false), 10000))
     ]));
     verifier(pret, 'le service worker est installé');
-    await p.reload();
+    await recharger(p);
     await p.waitForTimeout(800);
     await ctx.setOffline(true);
     let horsLigne = 0;
     try {
-      await p.reload();
+      await recharger(p);
       await p.waitForTimeout(1500);
-      horsLigne = await p.evaluate(() => document.body.innerText.trim().length);
+      horsLigne = await mesurer(p, () => document.body.innerText.trim().length);
     } catch (e) { /* page introuvable hors ligne */ }
     verifier(horsLigne > 20, 'l’application se rouvre sans internet');
     await ctx.close();
@@ -141,10 +162,15 @@ async function controlesCommuns({ serviceWorker, avant }) {
 }
 
 /* ---------- Lancer une suite de tests ---------- */
-async function lancer(nom, fn, { autorises = [] } = {}) {
+/* « options » : sites autorisés (autorises) et réglages du navigateur
+   (argsNavigateur, par exemple une fausse caméra pour les tests). */
+async function lancer(nom, fn, { autorises = [], argsNavigateur = [] } = {}) {
   serveur = await demarrerServeur();
   adresse = `http://localhost:${serveur.address().port}/${DOSSIER}/`;
-  navigateur = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
+  navigateur = await chromium.launch({
+    args: argsNavigateur,
+    ...(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {})
+  });
   console.log(`Tests de ${nom} sur ${adresse}`);
   try {
     await fn();
