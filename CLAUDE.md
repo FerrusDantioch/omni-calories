@@ -304,6 +304,17 @@ Puis ouvrir `http://localhost:5500`. Un profil `.claude/launch.json` à la
 racine du dossier `claude` (config `suivi-calorique`) permet aussi de lancer
 ce serveur directement depuis l'outil de prévisualisation.
 
+## Tests
+
+`node tests/tester.js` (Playwright + Chromium, 23 vérifications ; pour le
+Chromium installé ailleurs : `CHROMIUM_PATH=…`). `tests/outils.js` = boîte à
+outils commune (même fichier dans plusieurs applications) : serveur local à
+la forme d'adresse de GitHub Pages (port libre), contrôles communs (fichiers
+du service worker présents, téléphone sans débordement, `[hidden]` respecté,
+hors ligne, aucun autre site contacté, aucune erreur JavaScript). Le dossier
+`tests/` ne sert qu'au développement : il n'est pas dans le cache et ne
+demande pas de nouvelle version.
+
 ## Schéma IndexedDB (base `suivi-calorique`, v1)
 
 Quatre magasins définis dans `BDD.ouvrir()` (`app.js`) — voir

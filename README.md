@@ -100,6 +100,29 @@ aussi être ajouté à la liste `FICHIERS` du même fichier.
 | `ARCHITECTURE.md` | Documentation technique détaillée |
 | `CLAUDE.md` | Notes de développement |
 
+## Tests automatiques
+
+Les tests ouvrent l’application dans un vrai navigateur, font les gestes
+d’une personne et vérifient le résultat, y compris sans internet. Ils ne
+contactent aucun site. Ils ne servent qu’au développement : l’application
+n’en a pas besoin pour fonctionner.
+
+Il faut [Node.js](https://nodejs.org) (version 22 ou plus récente), puis,
+une seule fois, dans le dossier de l’application :
+
+```
+npm install playwright
+npx playwright install chromium
+```
+
+Ensuite, à chaque fois :
+
+```
+node tests/tester.js
+```
+
+Le bilan s’affiche à la fin : « Échecs : 0 » veut dire que tout va bien.
+
 ## Bibliothèques et données d'autres auteurs
 
 | Élément | Version | Licence |
