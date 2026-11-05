@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — Omni-Calories
 
-Document de référence technique pour le développement de l'application via Claude Code. À passer en contexte au début de chaque session (`/clear` + ce fichier).
+Document de référence technique pour le développement de l'application avec l'aide de l'intelligence artificielle. À passer en contexte au début de chaque session.
 
 ## 1. Vue d'ensemble
 
